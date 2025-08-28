@@ -715,18 +715,8 @@ Contributions are welcome! Please submit a pull request or open an issue for any
 Name: Jimmy Majumder
 Role: Robotics Engineer
 Email: j.majumder@qibitech.com
-Team: Development Team @ Team_Enomoto
 Date: 2025-06-26
 Version: 1.0.1
-```
-
-### Project Information
-
-- **Initial Release**: June 26, 2025 (Version 1.0.0)
-- **Development Team**: Team_Enomoto
-- **Organization**: Qibitech Inc.
-- **Repository**: [Bitbucket Repository](https://bitbucket.org/qibitech/watchdog/src/main/)
-
 ---
 
-**© 2025 Qibitech Inc. All rights reserved. Developed by Team_Enomoto.**
+**© 2025 Qibitech Inc. All rights reserved.**
