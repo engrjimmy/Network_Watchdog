@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Network Watchdog Dashboard</title>
+  <style>
+    body {
+      display: flex;
+      height: 100vh;
+      margin: 0;
+      font-family: monospace;
+      background-color: #111;
+      color: #eee;
+    }
+    #ping-output {
+      width: 60%;
+      background-color: black;
+      padding: 10px;
+      overflow-y: scroll;
+      white-space: pre-wrap;
+      border-right: 2px solid #444;
+    }
+    #summary {
+      width: 40%;
+      padding: 20px;
+      background-color: #222;
+      overflow-y: auto;
+    }
+    select {
+      margin-bottom: 10px;
+      font-size: 16px;
+      background-color: #333;
+      color: #fff;
+      padding: 5px;
+      border: 1px solid #555;
+    }
+    .status-item {
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+    .status-name {
+      font-weight: bold;
+      font-size: 20px;
+    }
+    .status-reachable {
+      color: #0f0;
+    }
+    .status-unreachable {
+      color: #f33;
+    }
+    .last-update {
+      font-size: 12px;
+      color: #aaa;
+    }
+    .device-group {
+      margin-bottom: 20px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 10px;
+    }
+    .group-name {
+      font-size: 22px;
+      font-weight: bold;
+      color: #4a9;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="ping-output">
+    <div>
+      Select Device:
+      <select id="device-select">
+        <optgroup label="All Devices">
+          {% for name in devices %}
+            <option value="{{name}}">{{name}} ({{ devices[name] }})</option>
+          {% endfor %}
+        </optgroup>
+        
+        {% if device_groups %}
+          {% for group_name, group_devices in device_groups.items() %}
+            <optgroup label="{{ group_name }}">
+              {% for device_name in group_devices %}
+                {% if device_name in devices %}
+                  <option value="{{device_name}}">{{device_name}} ({{ devices[device_name] }})</option>
+                {% endif %}
+              {% endfor %}
+            </optgroup>
+          {% endfor %}
+        {% endif %}
+      </select>
+    </div>
+    <pre id="ping-text">Connecting to {{ devices.keys()|list|first }}...</pre>
+  </div>
+  <div id="summary">
+    <h2>Status Summary</h2>
+    
+    {% if device_groups %}
+      <div id="grouped-status-summary">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    {% else %}
+      <div id="status-summary">
+        <!-- Will be populated by JavaScript -->
+      </div>
+    {% endif %}
+  </div>
+
+<script>
+const devices = {{ devices | tojson }};
+const deviceGroups = {{ device_groups | tojson }};
+const pingText = document.getElementById("ping-text");
+const statusSummary = document.getElementById("status-summary");
+const groupedStatusSummary = document.getElementById("grouped-status-summary");
+const deviceSelect = document.getElementById("device-select");
+let eventSource = null;
+let currentStatus = {};
+
+// Renders the current status for all devices
+function renderStatusSummary() {
+  if (deviceGroups && Object.keys(deviceGroups).length > 0 && groupedStatusSummary) {
+    // Render grouped status
+    let html = "";
+    
+    for (const [groupName, groupDevices] of Object.entries(deviceGroups)) {
+      html += `<div class="device-group">
+        <div class="group-name">${groupName}</div>`;
+      
+      for (const deviceName of groupDevices) {
+        if (deviceName in currentStatus) {
+          const info = currentStatus[deviceName];
+          const reachable = info.reachable;
+          const latency = info.latency_ms;
+          const lastUpdate = info.last_update ? new Date(info.last_update).toLocaleTimeString() : "N/A";
+          
+          html += `<div class="status-item">
+            <div class="status-name">${deviceName}</div>
+            <div>
+              Status: <span class="${reachable ? 'status-reachable' : 'status-unreachable'}">
+                ${reachable ? '✅ Reachable' : '❌ Unreachable'}
+              </span>
+            </div>
+            <div>${latency !== null && latency !== undefined ? `Latency: ${latency} ms` : ''}</div>
+            <div class="last-update">Last update: ${lastUpdate}</div>
+          </div>`;
+        }
+      }
+      
+      html += `</div>`;
+    }
+    
+    groupedStatusSummary.innerHTML = html;
+  } else if (statusSummary) {
+    // Render flat status list
+    let html = "";
+    for (const [name, info] of Object.entries(currentStatus)) {
+      const reachable = info.reachable;
+      const latency = info.latency_ms;
+      const lastUpdate = info.last_update ? new Date(info.last_update).toLocaleTimeString() : "N/A";
+      
+      html += `<div class="status-item">
+        <div class="status-name">${name}</div>
+        <div>
+          Status: <span class="${reachable ? 'status-reachable' : 'status-unreachable'}">
+            ${reachable ? '✅ Reachable' : '❌ Unreachable'}
+          </span>
+        </div>
+        <div>${latency !== null && latency !== undefined ? `Latency: ${latency} ms` : ''}</div>
+        <div class="last-update">Last update: ${lastUpdate}</div>
+      </div>`;
+    }
+    
+    statusSummary.innerHTML = html;
+  }
+}
+
+// Fetch backend status every second to update all statuses
+function fetchStatusSummary() {
+  fetch("/status")
+    .then(resp => resp.json())
+    .then(data => {
+      const now = new Date().toISOString();
+      for (const [name, info] of Object.entries(data)) {
+        currentStatus[name] = {
+          reachable: info.reachable,
+          latency_ms: info.latency_ms,
+          last_update: now,
+        };
+      }
+      renderStatusSummary();
+    })
+    .catch(() => {
+      if (statusSummary) {
+        statusSummary.innerHTML = `<div style="color:red;">Failed to load status</div>`;
+      }
+      if (groupedStatusSummary) {
+        groupedStatusSummary.innerHTML = `<div style="color:red;">Failed to load status</div>`;
+      }
+    });
+}
+
+// Main ping stream handler
+function startPingStream(deviceName) {
+  if (eventSource) {
+    eventSource.close();
+  }
+  
+  pingText.textContent = `🔄 Connecting to ${deviceName}...\n`;
+  eventSource = new EventSource(`/ping_stream/${deviceName}`);
+  
+  eventSource.onmessage = function(e) {
+    pingText.textContent += e.data + "\n";
+    pingText.scrollTop = pingText.scrollHeight;
+    
+    if (e.data.includes("time=")) {
+      const latencyMatch = e.data.match(/time=([\d.]+)/);
+      const latency = latencyMatch ? parseFloat(latencyMatch[1]) : null;
+      
+      currentStatus[deviceName] = {
+        reachable: true,
+        latency_ms: latency,
+        last_update: new Date().toISOString(),
+      };
+    } else if (
+      e.data.toLowerCase().includes("unreachable") ||
+      e.data.toLowerCase().includes("timeout") ||
+      e.data.includes("100% packet loss")
+    ) {
+      currentStatus[deviceName] = {
+        reachable: false,
+        latency_ms: null,
+        last_update: new Date().toISOString(),
+      };
+    }
+    
+    renderStatusSummary();
+  };
+  
+  eventSource.onerror = function() {
+    pingText.textContent += `\n❌ [Disconnected from ${deviceName} stream]\n`;
+    
+    currentStatus[deviceName] = {
+      reachable: false,
+      latency_ms: null,
+      last_update: new Date().toISOString(),
+    };
+    
+    renderStatusSummary();
+    eventSource.close();
+  };
+}
+
+// Initialize
+fetchStatusSummary();
+startPingStream(deviceSelect.value);
+setInterval(fetchStatusSummary, 1000);
+
+// Change selected device
+deviceSelect.addEventListener("change", () => {
+  startPingStream(deviceSelect.value);
+});
+</script>
+</body>
+</html>
+

@@ -1,0 +1,32 @@
+device_groups:
+  Development:
+  - Jimmy's DevPC
+  - FleetPC
+  Edge Computers:
+  - EdgePc_Techrum01
+  - EdgePc_Techrum02
+  Marketing:
+  - Kachaka_Marketing01
+  - Kachaka_Marketing03
+  Network Infrastructure:
+  - Router
+devices:
+  EdgePc_Techrum01: 192.168.8.5
+  EdgePc_Techrum02: 192.168.8.6
+  FleetPC: 192.168.8.4
+  Jimmy's DevPC: 192.168.8.14
+  Kachaka_Marketing01: 192.168.8.10
+  Kachaka_Marketing03: 192.168.8.11
+  Router: 192.168.8.1
+logging:
+  directory: logs
+  filename_format: watchdog_%Y-%m-%d-%H-%M.txt
+  log_level: INFO
+monitoring:
+  ping_count: 1
+  ping_interval: 1.0
+  ping_timeout: 1
+server:
+  debug: false
+  host: 0.0.0.0
+  port: 5000

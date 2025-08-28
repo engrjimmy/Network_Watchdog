@@ -1,0 +1,45 @@
+# Network Watchdog Configuration (Template)
+
+# Server settings
+server:
+  host: "0.0.0.0"
+  port: 5000
+  debug: false
+
+# Logging settings
+logging:
+  directory: "logs"
+  filename_format: "watchdog_%Y-%m-%d-%H-%M.txt"
+  log_level: "INFO"
+
+# Monitoring settings
+monitoring:
+  ping_interval: 1.0  # seconds
+  ping_timeout: 1     # seconds
+  ping_count: 1
+
+# Devices to monitor (replace placeholders with real IP addresses)
+devices:
+  "Device_A:PC": "172.28.110.12"   # Example: Development PC
+  "Device_B": "192.168.0.102"   # Example: Server PC
+  "Device_C": "192.168.0.103"   # Example: Edge Node 1
+  "Device_D": "192.168.0.104"   # Example: Edge Node 2
+  "Device_E": "192.168.0.105"   # Example: Marketing PC 1
+  "Device_F": "192.168.0.106"   # Example: Marketing PC 2
+  "Router_A": "192.168.0.1"     # Example: Router
+  "Router_B": "192.168.1.1"     # Example: Home Router
+
+# Device groups (update names and members as needed)
+device_groups:
+  "Group_Development":
+    - "Device_A:PC"
+    - "Device_B"
+  "Group_Edge":
+    - "Device_C"
+    - "Device_D"
+  "Group_Marketing":
+    - "Device_E"
+    - "Device_F"
+  "Group_Network":
+    - "Router_A"
+    - "Router_B"
